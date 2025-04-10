@@ -128,5 +128,38 @@ export const updateJob = async (req, res) => {
 
 
 export const applyForJob = async (req, res) => {
-   
+   try{
+    
+      const token = req.headers.authorization?.split(" ")[1];
+      if (!token) {
+        return res.status(401).json({ message: "Unauthorized Token" });
+      }
+  
+      const decode = verifyToken(token);
+      if (!decode) {
+        return res.status(401).json({ message: "Token Invalid" });
+      }
+  
+      if (decode.user_type !== 1) {
+        return res.status(403).json({ message: "Forbidden: Only jobseeker can apply the job" });
+      }
+      const jobSeekerId = decode.id;
+      const {jobId, resume} = req.body;
+      if(!jobId || !resume){
+        return res.status(400).json({message: "Job id and resume is required"});
+
+      }
+      const alreadyApply = await Application.findOne(jobId, jobSeekerId);
+      if(alreadyApply){
+        return res.status(400).json({message: "You are already applied for this job"});
+      }
+      const newApplication = new Application({jobId, jobSeekerId, resume});
+      const saveApplication = await newApplication.save();
+      res.status(201).json({message: "Job Applied successfully", Appli: saveApplication});
+
+   }catch(error){
+      console.error("Update Job Error:", error);
+      res.status(500).json({ message: "Server error. Please try again later." });
+    
+   }
 };
